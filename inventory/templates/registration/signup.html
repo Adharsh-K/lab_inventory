@@ -1,0 +1,30 @@
+{% extends 'inventory/base.html' %}
+
+{% block content %}
+<div style="max-width: 400px; margin: 0 auto;">
+    <h2 style="text-align: center;">Join IdeaLab Inventory</h2>
+    <form method="post" style="background: white; padding: 25px; border-radius: 8px; border: 1px solid #ddd;">
+        {% csrf_token %}
+        <div style="margin-bottom: 15px;">
+            <label>Full Name</label>
+            <input type="text" name="name" required style="width: 100%; padding: 8px; margin-top: 5px;">
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label>Class (e.g. CSA, MEB)</label>
+            <input type="text" name="class" required style="width: 100%; padding: 8px; margin-top: 5px;">
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label>College Email (UserID)</label>
+            <input type="email" name="email" required style="width: 100%; padding: 8px; margin-top: 5px;">
+        </div>
+        <div style="margin-bottom: 20px;">
+            <label>Password</label>
+            <input type="password" name="password" required style="width: 100%; padding: 8px; margin-top: 5px;">
+        </div>
+        <button type="submit" class="btn" style="width: 100%;">Create Account</button>
+    </form>
+    <p style="text-align: center; margin-top: 15px;">
+        Already have an account? <a href="{% url 'login' %}">Login here</a>
+    </p>
+</div>
+{% endblock %}

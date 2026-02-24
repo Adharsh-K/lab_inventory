@@ -1,0 +1,43 @@
+{% extends 'inventory/base.html' %}
+
+{% block content %}
+<div style="max-width: 400px; margin: 0 auto; padding: 20px;">
+    <h2 style="text-align: center; color: #2c3e50;">IdeaLab Login</h2>
+    <p style="text-align: center; color: #7f8c8d;">Enter your credentials to access the inventory.</p>
+    <p style="text-align: center; margin-top: 15px;">
+    Don't have an account? <a href="{% url 'signup' %}">Sign up here</a>
+</p>
+    <form method="post" style="background: #fff; padding: 25px; border-radius: 8px; border: 1px solid #ddd;">
+        {% csrf_token %}
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px;">Username</label>
+            {{ form.username }}
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 5px;">Password</label>
+            {{ form.password }}
+        </div>
+
+        <button type="submit" class="btn" style="width: 100%;">Login</button>
+    </form>
+    
+    {% if form.errors %}
+        <p style="color: #e74c3c; text-align: center; margin-top: 15px;">
+            Invalid username or password. Please try again.
+        </p>
+    {% endif %}
+</div>
+
+<style>
+    /* Styling the Django form fields */
+    input[type="text"], input[type="password"] {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box; /* Ensures padding doesn't affect width */
+    }
+</style>
+{% endblock %}

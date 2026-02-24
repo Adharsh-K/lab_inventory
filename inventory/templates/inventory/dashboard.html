@@ -1,0 +1,69 @@
+{% extends 'inventory/base.html' %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>Student Dashboard</h2>
+    <a href="{% url 'new_request' %}" class="btn">+ New Request</a>
+</div>
+<div class="status-card">
+    {% if req.status == 'pending' %}
+        <p style="color: #636e72;">⏳ <b>Status:</b> Waiting for Incharge to approve...</p>
+    {% elif req.status == 'approved' %}
+        <p style="color: #00b894;">✅ <b>Status:</b> Approved! Please go to the Lab counter.</p>
+    {% elif req.status == 'collected' %}
+        <p style="color: #0984e3;">📦 <b>Status:</b> Items with you. (Issued on {{ req.collected_at|date:"d M" }})</p>
+    {% elif req.status == 'returned' %}
+        <p style="color: #6c5ce7;">🏁 <b>Status:</b> Returned & Verified. Thank you!</p>
+    {% endif %}
+</div>
+<div class="card">
+    <h3>My Active & Past Requests</h3>
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+            <tr>
+                <th style="padding: 12px; text-align: left;">ID</th>
+                <th style="padding: 12px; text-align: left;">Items & Progress</th>
+                <th style="padding: 12px; text-align: left;">Status</th>
+                <th style="padding: 12px; text-align: left;">Return Date</th>
+                
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in my_requests %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 12px;">#{{ req.id }}</td>
+                <td style="padding: 12px;">
+                    {% for item in req.items.all %}
+                        <div style="margin-bottom: 5px;">
+                            <strong>{{ item.component.name }}</strong><br>
+                            <small style="color: #666;">
+                                Issued: {{ item.issued_quantity }} | 
+                                Returned: {{ item.returned_quantity }}
+                            </small>
+                            <div style="width: 100%; background: #eee; height: 5px; border-radius: 5px; margin-top: 4px;">
+                                <div style="width: {% widthratio item.returned_quantity item.issued_quantity 100 %}%; background: #2ecc71; height: 5px; border-radius: 5px;"></div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </td>
+                <td style="padding: 12px;">
+                    <span class="status-{{ req.status }}" style="text-transform: capitalize; padding: 4px 8px; border-radius: 4px; font-size: 0.85em;">
+                        {{ req.get_status_display }}
+                    </span>
+                </td>
+                <td style="padding: 12px;">{{ req.return_date|default:"--" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" style="text-align: center; padding: 20px;">You haven't made any requests yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<style>
+    .status-pending { background: #fff3cd; color: #856404; }
+    .status-approved { background: #d4edda; color: #155724; }
+    .status-collected { background: #d1ecf1; color: #0c5460; }
+    .status-rejected { background: #f8d7da; color: #721c24; }
+</style>
+{% endblock %}

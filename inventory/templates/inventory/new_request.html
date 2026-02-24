@@ -1,0 +1,53 @@
+{% extends 'inventory/base.html' %}
+
+{% block content %}
+    <h2>New Lab Request</h2>
+    <p>Search for components and specify quantities.</p>
+    <hr>
+    
+    <form method="post">
+        {% csrf_token %}
+        <div id="request-items-container">
+            <div class="request-row" style="display: flex; gap: 10px; margin-bottom: 15px; align-items: flex-end;">
+                <div style="flex: 2;">
+                    <label>Search Component</label><br>
+                    <input list="component-list" name="component_name[]" placeholder="Type to search..." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                
+                <div style="flex: 1;">
+                    <label>Quantity</label><br>
+                    <input type="number" name="quantity[]" min="1" value="1" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+            </div>
+        </div>
+
+        <button type="button" onclick="addRow()" style="background: #95a5a6; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 0.9em;">
+            + Add Another Item
+        </button>
+
+ <datalist id="component-list">
+    {% for comp in components %}
+        <option value="{{ comp.name }}">{{ comp.name }} | Stock: {{ comp.available_quantity }}</option>
+    {% endfor %}
+</datalist>
+
+        <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+            <button type="submit" class="btn">Submit Request</button>
+            <a href="{% url 'dashboard' %}" style="margin-left: 15px; color: #666;">Cancel</a>
+        </div>
+    </form>
+
+    <script>
+    function addRow() {
+        const container = document.getElementById('request-items-container');
+        const firstRow = container.querySelector('.request-row');
+        const newRow = firstRow.cloneNode(true);
+        
+        // Clear the values in the new row
+        newRow.querySelector('input[name="component_name[]"]').value = "";
+        newRow.querySelector('input[name="quantity[]"]').value = "1";
+        
+        container.appendChild(newRow);
+    }
+    </script>
+{% endblock %}

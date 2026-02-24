@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lab Inventory</title>
+    <style>
+        body { font-family: sans-serif; margin: 40px; }
+        .card { border: 1px solid #ccc; padding: 20px; margin-bottom: 10px; border-radius: 8px; }
+        .category { color: #666; font-size: 0.9em; }
+        .stock { font-weight: bold; color: green; }
+    </style>
+</head>
+<body>
+    <h1>Available Lab Components</h1>
+    <hr>
+    {% for comp in components %}
+    <div class="card">
+        <h2>{{ comp.name }}</h2>
+        <p class="category">Category: {{ comp.category.name }}</p>
+        <p>Available: <span class="stock">{{ comp.available_quantity }}</span></p>
+        <button>Request This Item</button>
+    </div>
+    {% empty %}
+    <p>No components found in the inventory.</p>
+    {% endfor %}
+</body>
+</html>
