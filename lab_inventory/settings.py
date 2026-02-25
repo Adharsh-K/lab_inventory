@@ -8,10 +8,22 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
+
 """
 
-from pathlib import Path
+import dj_database_url
+import os
 
+# Set this to False when you actually deploy!
+DEBUG = True 
+
+# Add '*' for now so the mobile app can connect easily during testing
+ALLOWED_HOSTS = ['ilabmec.engineer','192.168.1.3', '*', 'localhost', '127.0.0.1']
+from pathlib import Path
+CSRF_TRUSTED_ORIGINS = [
+    'https://ilabmec.engineer',
+    'https://*.ilabmec.engineer', # Covers subdomains if you add any later
+]
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -25,7 +37,8 @@ SECRET_KEY = 'django-insecure-$6or*7(l#0v96dfu#e3gh+a_=)0#&ywqp#qk5j@xtgh3*o2g5v
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# settings.py
+ALLOWED_HOSTS = ['ilabmec.engineer', 'www.ilabmec.engineer', 'localhost', '127.0.0.1']
 
 
 # Application definition
@@ -157,3 +170,10 @@ AUTH_USER_MODEL = 'users.User'
 LOGIN_REDIRECT_URL = 'dashboard'
 
 LOGOUT_REDIRECT_URL = 'login'
+
+DATABASES = {
+    'default': dj_database_url.config(
+        default='postgres://postgres:postgres@localhost:5432/lab_inventory_db', # Your local DB for backup
+        conn_max_age=600
+    )
+}

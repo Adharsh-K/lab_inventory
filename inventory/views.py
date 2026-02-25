@@ -1,31 +1,41 @@
-from django.shortcuts import render
-
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import login, get_user_model
 from django.contrib.auth.decorators import login_required
-from .models import Request, Component
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.response import Response
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.authtoken.models import Token
+from rest_framework.exceptions import PermissionDenied
+
+from .models import Component, Request, RequestItem
+from .serializers import ItemRequestSerializer
+
+# Get the active User model
+User = get_user_model()
+
+# ==========================================
+# 🌐 WEB VIEWS (Student Portal)
+# ==========================================
 
 @login_required
 def dashboard(request):
-    # Get only the requests belonging to the logged-in student
+    """View for students to see their own request history."""
     my_requests = Request.objects.filter(student=request.user).order_by('-requested_at')
     return render(request, 'inventory/dashboard.html', {'my_requests': my_requests})
 
-from django.shortcuts import render, redirect
-from .models import Component, Request, RequestItem
-from django.contrib.auth.decorators import login_required
-
 @login_required
 def new_request(request):
+    """View for students to submit a new component request."""
     components = Component.objects.filter(available_quantity__gt=0)
     
     if request.method == 'POST':
-        # Grab all rows from the form
         names = request.POST.getlist('component_name[]')
         quantities = request.POST.getlist('quantity[]')
         
-        # Create the Request record
         new_req = Request.objects.create(student=request.user)
         
-        # Connect each item to the request
         for name, qty in zip(names, quantities):
             if name.strip() and int(qty) > 0:
                 try:
@@ -36,41 +46,129 @@ def new_request(request):
                         quantity=qty
                     )
                 except Component.DoesNotExist:
-                    continue # Skip invalid names
+                    continue 
                     
         return redirect('dashboard')
 
     return render(request, 'inventory/new_request.html', {'components': components})
-from django.contrib.auth import login, get_user_model # Change this import
-from django.shortcuts import render, redirect
-
-# Get the active User model (whether it's the default or your 'users.User')
-User = get_user_model()
 
 def signup(request):
+    """Student registration view."""
     if request.method == 'POST':
         email = request.POST.get('email')
         password = request.POST.get('password')
         full_name = request.POST.get('name')
         
-        # Check if email/username already exists
         if User.objects.filter(username=email).exists():
             return render(request, 'registration/signup.html', {'error': 'Email already registered'})
 
-        # Create the user using the active model
-        # We use email as the username as you requested
         user = User.objects.create_user(
             username=email, 
             email=email, 
             password=password,
             first_name=full_name
         )
-        
-        # Note: If your custom 'users.User' model has a specific 'class' field,
-        # you should set it here. For now, we'll save the user.
         user.save()
 
         login(request, user)
         return redirect('dashboard')
         
     return render(request, 'registration/signup.html')
+
+
+# ==========================================
+# 📱 API VIEWS (Flutter Incharge App)
+# ==========================================
+
+class CustomAuthToken(ObtainAuthToken):
+    """Login endpoint that restricts access to Incharges (is_staff) only."""
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data,
+                                           context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        
+        if not user.is_staff:
+            raise PermissionDenied("Access denied. Only IdeaLab Incharges can log in.")
+
+        token, created = Token.objects.get_or_create(user=user)
+        return Response({
+            'token': token.key,
+            'user_id': user.pk,
+            'is_staff': user.is_staff
+        })
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def request_list(request):
+    """Fetch all requests for the Incharge app's list views."""
+    requests = Request.objects.all().order_by('-requested_at')
+    serializer = ItemRequestSerializer(requests, many=True)
+    return Response(serializer.data)
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_request_status(request, pk):
+    item_request = get_object_or_404(Request, pk=pk)
+    new_status = request.data.get('status')
+    
+    # Map from Flutter: {"0": 5, "1": 2} (Index: Quantity)
+    data_map = request.data.get('issued_items')
+
+    if not new_status:
+        return Response({"error": "No status provided"}, status=400)
+
+    # --- FLOW A: ISSUING ---
+    if new_status == 'collected' and item_request.status != 'collected':
+        items = RequestItem.objects.filter(request=item_request).order_by('id')
+        for index, item in enumerate(items):
+            final_qty = item.quantity 
+            if data_map and str(index) in data_map:
+                final_qty = int(data_map[str(index)])
+            
+            item.issued_quantity = final_qty 
+            item.save()
+
+            # Deduct from master stock
+            component = item.component
+            component.available_quantity -= final_qty
+            component.save()
+
+        item_request.status = new_status
+        item_request.save()
+
+    # --- FLOW B: RETURNING (Handles Partial Returns) ---
+    elif new_status == 'processing_return' and data_map:
+        items = RequestItem.objects.filter(request=item_request).order_by('id')
+        all_returned = True
+        
+        for index, item in enumerate(items):
+            qty_returned_now = int(data_map.get(str(index), 0))
+            
+            if qty_returned_now > 0:
+                # Add back to master inventory
+                comp = item.component
+                comp.available_quantity += qty_returned_now
+                comp.save()
+
+                # Update RequestItem (Cumulative)
+                item.returned_quantity = (item.returned_quantity or 0) + qty_returned_now
+                item.save()
+
+            # Check if this item still has a balance
+            if item.returned_quantity < item.issued_quantity:
+                all_returned = False
+
+        # If everything is back, mark 'returned', otherwise keep 'collected'
+        item_request.status = 'returned' if all_returned else 'collected'
+        item_request.save()
+
+    # --- FALLBACK: Simple Changes ---
+    else:
+        item_request.status = new_status
+        item_request.save()
+
+    return Response({
+        "message": "Update successful", 
+        "current_status": item_request.status
+    }, status=200)

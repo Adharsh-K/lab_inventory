@@ -31,6 +31,7 @@ class Request(models.Model):
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
         ('collected', 'Collected'),
+        ('Processing_return', 'Processing_return'),
         ('returned', 'Returned'),
     )
 
