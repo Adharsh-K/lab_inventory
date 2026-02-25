@@ -79,7 +79,21 @@ class RequestItem(models.Model):
     def __str__(self):
         return f"{self.component.name} (Issued: {self.issued_quantity}, Returned: {self.returned_quantity})"
     
-    
+# inventory/models.py
+from django.conf import settings
+
+class Student(models.Model):
+    # This links to your users_user table
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='student_profile'
+    )
+    # This is the "ID" you want to search by (e.g., Roll No)
+    student_id_code = models.CharField(max_length=20, unique=True)
+
+    def __str__(self):
+        return f"{self.student_id_code} - {self.user.first_name}"
 
 from django.db.models.signals import post_save
 from django.dispatch import receiver

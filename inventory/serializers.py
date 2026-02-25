@@ -3,6 +3,7 @@ from rest_framework import serializers
 from .models import Request, RequestItem
 
 class RequestItemSerializer(serializers.ModelSerializer):
+    
     # This grabs the 'name' from the related Component model
     item_name = serializers.ReadOnlyField(source='component.name') 
 
@@ -13,9 +14,10 @@ class RequestItemSerializer(serializers.ModelSerializer):
 
 class ItemRequestSerializer(serializers.ModelSerializer):
     # This pulls all linked items into the single JSON response
+    student_id = serializers.ReadOnlyField(source='student.student_profile.student_id_code')
     items = RequestItemSerializer(many=True, read_only=True)
-    student_name = serializers.CharField(source='student.username', read_only=True)
+    student_name = serializers.CharField(source='student.first_name', read_only=True)
 
     class Meta:
         model = Request
-        fields = ['id', 'student_name', 'status', 'items',]
+        fields = ['id', 'student_name', 'student_id', 'status', 'items',]

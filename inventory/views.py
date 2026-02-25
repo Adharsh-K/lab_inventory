@@ -52,23 +52,32 @@ def new_request(request):
 
     return render(request, 'inventory/new_request.html', {'components': components})
 
+
 def signup(request):
-    """Student registration view."""
+    """Student registration view with Student ID support."""
     if request.method == 'POST':
         email = request.POST.get('email')
         password = request.POST.get('password')
         full_name = request.POST.get('name')
+        # 1. Grab the roll number from the form
+        roll_no = request.POST.get('student_id') 
         
         if User.objects.filter(username=email).exists():
             return render(request, 'registration/signup.html', {'error': 'Email already registered'})
 
+        # 2. Create the User with the correct role
         user = User.objects.create_user(
             username=email, 
             email=email, 
             password=password,
-            first_name=full_name
+            first_name=full_name,
+            role='student' # Matches your users_user table structure
         )
-        user.save()
+        
+        # 3. Create the linked Student profile entry
+        # This is where the actual ID is stored for your audit/history
+        from .models import Student
+        Student.objects.create(user=user, student_id_code=roll_no)
 
         login(request, user)
         return redirect('dashboard')
@@ -172,3 +181,25 @@ def update_request_status(request, pk):
         "message": "Update successful", 
         "current_status": item_request.status
     }, status=200)
+
+# inventory/views.py
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def request_history(request):
+    """Advanced filtering for audit and history."""
+    queryset = Request.objects.all().order_by('-requested_at')
+    
+    # 1. Filter by Student ID
+    student_id = request.query_params.get('student_id')
+    if student_id:
+        queryset = queryset.filter(student__username=student_id)
+        
+    # 2. Filter by Date Range (YYYY-MM-DD)
+    start_date = request.query_params.get('start_date')
+    end_date = request.query_params.get('end_date')
+    if start_date and end_date:
+        queryset = queryset.filter(requested_at__date__range=[start_date, end_date])
+
+    serializer = ItemRequestSerializer(queryset, many=True)
+    return Response(serializer.data)
