@@ -9,8 +9,10 @@ from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import PermissionDenied
 
-from .models import Component, Request, RequestItem
+from .models import  Category, Request, RequestItem
 from .serializers import ItemRequestSerializer
+from .models import Component as Item  # Assuming your Component model is the one representing inventory items
+from .serializers import  ItemSerializer  # Serializer for listing/creating items
 
 # Get the active User model
 User = get_user_model()
@@ -203,3 +205,100 @@ def request_history(request):
 
     serializer = ItemRequestSerializer(queryset, many=True)
     return Response(serializer.data)
+
+# inventory/views.py
+from django.utils.dateparse import parse_date
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import Request
+from .serializers import ItemRequestSerializer
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def request_history(request):
+    """View to handle audit logs with date filtering."""
+    # Start with all requests, newest first
+    queryset = Request.objects.all().order_by('-requested_at')
+    
+    # 1. Get parameters from Flutter (?start_date=...&end_date=...)
+    start_date = request.query_params.get('start_date')
+    end_date = request.query_params.get('end_date')
+    
+    # 2. Apply filtering if dates are provided
+    if start_date and end_date:
+        # We use __date__ to ignore the time part of the timestamp
+        queryset = queryset.filter(requested_at__date__range=[start_date, end_date])
+
+    serializer = ItemRequestSerializer(queryset, many=True)
+    return Response(serializer.data)
+
+from django.db.models import Q # Add this import at the top
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import Request , Component
+from .serializers import ItemRequestSerializer
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def request_history(request):
+    """Handles filtered audit logs for the Incharge."""
+    # Start with all requests
+    queryset = Request.objects.all().order_by('-requested_at')
+    
+    # 1. Get search parameters from Flutter
+    search_query = request.query_params.get('student_id')
+    start_date = request.query_params.get('start_date')
+    end_date = request.query_params.get('end_date')
+
+    # 2. Dynamic Search (ID or Name)
+    if search_query:
+        queryset = queryset.filter(
+            Q(student__student_profile__student_id_code__icontains=search_query) |
+            Q(student__first_name__icontains=search_query) |
+            Q(student__last_name__icontains=search_query)
+        )
+
+    # 3. Date Range Filtering
+    if start_date and end_date:
+        queryset = queryset.filter(requested_at__date__range=[start_date, end_date])
+
+    serializer = ItemRequestSerializer(queryset, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET', 'POST'])
+def item_list_create(request):
+    if request.method == 'GET':
+        items = Item.objects.all()
+        serializer = ItemSerializer(items, many=True)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        # --- DEBUG START ---
+        from .models import Category
+        existing_ids = list(Category.objects.values_list('id', flat=True))
+        print(f"DEBUG: All Category IDs in DB: {existing_ids}")
+        print(f"DEBUG: Flutter sent Category ID: {request.data.get('category')}")
+        # --- DEBUG END ---
+        serializer = ItemSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(available_quantity=request.data.get('total_quantity'))
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+    
+@api_view(['GET'])
+def get_categories(request):
+    categories = Category.objects.all()
+    # Simple manual serialization or use a CategorySerializer
+    data = [{"id": cat.id, "name": cat.name} for cat in categories]
+    return Response(data)
+@api_view(['POST'])
+def add_category(request):
+    name = request.data.get('name')
+    if name:
+        category, created = Category.objects.get_or_create(name=name)
+        if created:
+            return Response({"id": category.id, "name": category.name}, status=201)
+        return Response({"error": "Already exists"}, status=400)
+    return Response({"error": "Name required"}, status=400)
