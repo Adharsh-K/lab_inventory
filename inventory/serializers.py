@@ -5,12 +5,14 @@ from .models import Request, RequestItem
 class RequestItemSerializer(serializers.ModelSerializer):
     
     # This grabs the 'name' from the related Component model
-    item_name = serializers.ReadOnlyField(source='component.name') 
+    #item_name = serializers.ReadOnlyField(source='component.name') 
+    component_name = serializers.ReadOnlyField(source='component.name')
+    category_name = serializers.ReadOnlyField(source='component.category.name')
 
     class Meta:
         model = RequestItem
         # Add 'item_name' to the fields list
-        fields = ['component', 'item_name', 'quantity','issued_quantity', 'returned_quantity']
+        fields = ['id', 'component', 'component_name', 'category_name', 'quantity', 'issued_quantity', 'returned_quantity']
 
 class ItemRequestSerializer(serializers.ModelSerializer):
     # This pulls all linked items into the single JSON response
