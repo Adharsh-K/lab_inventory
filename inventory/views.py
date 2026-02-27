@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
+from django.utils import timezone # --- REQUIRED IMPORT ---
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -11,7 +12,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.pagination import PageNumberPagination
 
-from .models import Category, Request, RequestItem, Student
+from .models import Category, Request as ItemRequest, RequestItem, Student
 from .models import Component as Item 
 from .serializers import ItemRequestSerializer, ItemSerializer
 
@@ -25,7 +26,7 @@ User = get_user_model()
 @login_required
 def dashboard(request):
     """View for students to see their own request history."""
-    my_requests = Request.objects.filter(student=request.user).order_by('-requested_at')
+    my_requests = ItemRequest.objects.filter(student=request.user).order_by('-requested_at')
     return render(request, 'inventory/dashboard.html', {'my_requests': my_requests})
 
 @login_required
@@ -38,7 +39,7 @@ def new_request(request):
         names = request.POST.getlist('component_name[]')
         quantities = request.POST.getlist('quantity[]')
         
-        new_req = Request.objects.create(student=request.user)
+        new_req = ItemRequest.objects.create(student=request.user)
         
         for name, qty in zip(names, quantities):
             if name.strip() and int(qty) > 0:
@@ -110,7 +111,7 @@ class CustomAuthToken(ObtainAuthToken):
 @permission_classes([IsAuthenticated])
 def request_list(request):
     """Fetch all requests for the Incharge app's pending list."""
-    requests = Request.objects.all().order_by('-requested_at')
+    requests = ItemRequest.objects.all().order_by('-requested_at')
     serializer = ItemRequestSerializer(requests, many=True)
     return Response(serializer.data)
 
@@ -121,7 +122,7 @@ def request_history(request):
     PAGINATED History view with filtering.
     This is the final version that handles Search (ID/Name) and Date Range.
     """
-    queryset = Request.objects.all().order_by('-requested_at')
+    queryset = ItemRequest.objects.all().order_by('-requested_at')
     
     # 1. Get Params from Flutter
     search_query = request.query_params.get('student_id')
@@ -154,19 +155,24 @@ def request_history(request):
     serializer = ItemRequestSerializer(queryset, many=True)
     return Response(serializer.data)
 
+
+
+
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 def update_request_status(request, pk):
-    """Handles Issuing and Returning logic with Stock Management."""
-    item_request = get_object_or_404(Request, pk=pk)
+    """Handles Issuing and Returning logic with Stock Management & Timestamps."""
+    item_request = get_object_or_404(ItemRequest, pk=pk)
     new_status = request.data.get('status')
     data_map = request.data.get('issued_items')
 
     if not new_status:
         return Response({"error": "No status provided"}, status=400)
 
-    # --- ISSUING FLOW ---
+    # --- 1. ISSUING FLOW ---
     if new_status == 'collected' and item_request.status != 'collected':
+        item_request.collected_at = timezone.now()
+        
         items = RequestItem.objects.filter(request=item_request).order_by('id')
         for index, item in enumerate(items):
             final_qty = item.quantity 
@@ -176,18 +182,16 @@ def update_request_status(request, pk):
             item.issued_quantity = final_qty 
             item.save()
 
-            # Deduct from stock
             component = item.component
             component.available_quantity -= final_qty
             component.save()
 
-        item_request.status = new_status
+        item_request.status = 'collected'
         item_request.save()
 
-    # --- RETURNING FLOW ---
+    # --- 2. RETURNING FLOW ---
     elif new_status == 'processing_return' and data_map:
         items = RequestItem.objects.filter(request=item_request).order_by('id')
-        all_returned = True
         
         for index, item in enumerate(items):
             qty_returned_now = int(data_map.get(str(index), 0))
@@ -199,21 +203,31 @@ def update_request_status(request, pk):
                 item.returned_quantity = (item.returned_quantity or 0) + qty_returned_now
                 item.save()
 
-            if item.returned_quantity < item.issued_quantity:
-                all_returned = False
+        # Check if EVERY item is now fully back
+        # We re-fetch to get updated values from the loop above
+        updated_items = RequestItem.objects.filter(request=item_request)
+        all_returned = all((i.returned_quantity or 0) >= (i.issued_quantity or 0) for i in updated_items)
 
-        item_request.status = 'returned' if all_returned else 'collected'
+        if all_returned:
+            item_request.status = 'returned'
+            # Force log the return time if it hasn't been logged yet
+            if not item_request.return_date:
+                item_request.return_date = timezone.now()
+        else:
+            item_request.status = 'collected'
+            
         item_request.save()
 
+    # --- 3. OTHER STATUS UPDATES (Rejected, etc.) ---
     else:
         item_request.status = new_status
         item_request.save()
 
     return Response({
         "message": "Update successful", 
-        "current_status": item_request.status
+        "current_status": item_request.status,
+        "returned_at": item_request.return_date # Helpful for debugging
     }, status=200)
-
 @api_view(['GET', 'POST'])
 def item_list_create(request):
     """Inventory Management: View stock or add new items."""

@@ -59,7 +59,7 @@ class Request(models.Model):
     requested_at = models.DateTimeField(auto_now_add=True)
     collected_at = models.DateTimeField(null=True, blank=True)
     return_deadline = models.DateField(null=True, blank=True)
-    return_date = models.DateField(null=True, blank=True)
+    return_date = models.DateTimeField(null=True, blank=True)
     class Meta:
         verbose_name_plural = "Requests"
 

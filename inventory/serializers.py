@@ -12,17 +12,26 @@ class RequestItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = RequestItem
         # Add 'item_name' to the fields list
-        fields = ['id', 'component', 'component_name', 'category_name', 'quantity', 'issued_quantity', 'returned_quantity']
+        fields = ['id', 'component', 'component_name', 'category_name', 'quantity', 'issued_quantity', 'returned_quantity',]
 
 class ItemRequestSerializer(serializers.ModelSerializer):
-    # This pulls all linked items into the single JSON response
     student_id = serializers.ReadOnlyField(source='student.student_profile.student_id_code')
     items = RequestItemSerializer(many=True, read_only=True)
     student_name = serializers.CharField(source='student.first_name', read_only=True)
 
     class Meta:
         model = Request
-        fields = ['id', 'student_name', 'student_id', 'status', 'items',]
+        # Add the date fields here so they show up in the History Page modal
+        fields = [
+            'id', 
+            'student_name', 
+            'student_id', 
+            'status', 
+            'items', 
+            'requested_at', 
+            'collected_at', 
+            'return_date'
+        ]
 
 from .models import Component as Item  # Ensure you import your Item model
 
@@ -64,3 +73,12 @@ class ItemSerializer(serializers.ModelSerializer):
         if 'available_quantity' not in validated_data:
             validated_data['available_quantity'] = validated_data.get('total_quantity')
         return super().create(validated_data)
+
+# serializers.py
+class HistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model =  Request
+        fields = [
+            'id', 'student_name', 'student_id', 'status', 'items',
+            'requested_at', 'collected_at', 'returned_at' 
+        ]
