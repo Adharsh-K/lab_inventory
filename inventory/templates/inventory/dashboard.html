@@ -1,69 +1,141 @@
 {% extends 'inventory/base.html' %}
 
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-    <h2>Student Dashboard</h2>
-    <a href="{% url 'new_request' %}" class="btn">+ New Request</a>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+    <div>
+        <h2 style="margin: 0; font-size: 1.75rem; letter-spacing: -0.025em;">Student Dashboard</h2>
+        <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.95rem;">Manage your component requests and track returns.</p>
+    </div>
+    <a href="{% url 'new_request' %}" class="btn">
+        <span style="margin-right: 8px; font-size: 1.2rem;">+</span> New Request
+    </a>
 </div>
-<div class="status-card">
-    {% if req.status == 'pending' %}
-        <p style="color: #636e72;">⏳ <b>Status:</b> Waiting for Incharge to approve...</p>
-    {% elif req.status == 'approved' %}
-        <p style="color: #00b894;">✅ <b>Status:</b> Approved! Please go to the Lab counter.</p>
-    {% elif req.status == 'collected' %}
-        <p style="color: #0984e3;">📦 <b>Status:</b> Items with you. (Issued on {{ req.collected_at|date:"d M" }})</p>
-    {% elif req.status == 'returned' %}
-        <p style="color: #6c5ce7;">🏁 <b>Status:</b> Returned & Verified. Thank you!</p>
-    {% endif %}
-</div>
-<div class="card">
-    <h3>My Active & Past Requests</h3>
-    <table style="width: 100%; border-collapse: collapse;">
-        <thead style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-            <tr>
-                <th style="padding: 12px; text-align: left;">ID</th>
-                <th style="padding: 12px; text-align: left;">Items & Progress</th>
-                <th style="padding: 12px; text-align: left;">Status</th>
-                <th style="padding: 12px; text-align: left;">Return Date</th>
-                
-            </tr>
-        </thead>
-        <tbody>
-            {% for req in my_requests %}
-            <tr style="border-bottom: 1px solid #eee;">
-                <td style="padding: 12px;">#{{ req.id }}</td>
-                <td style="padding: 12px;">
-                    {% for item in req.items.all %}
-                        <div style="margin-bottom: 5px;">
-                            <strong>{{ item.component.name }}</strong><br>
-                            <small style="color: #666;">
-                                Issued: {{ item.issued_quantity }} | 
-                                Returned: {{ item.returned_quantity }}
-                            </small>
-                            <div style="width: 100%; background: #eee; height: 5px; border-radius: 5px; margin-top: 4px;">
-                                <div style="width: {% widthratio item.returned_quantity item.issued_quantity 100 %}%; background: #2ecc71; height: 5px; border-radius: 5px;"></div>
+
+{% if my_requests %}
+    {% with latest=my_requests.0 %}
+    <div class="status-banner status-{{ latest.status }}">
+        {% if latest.status == 'pending' %}
+            <span class="icon">⏳</span> <strong>Status:</strong> Waiting for Incharge to approve Request #{{ latest.id }}
+        {% elif latest.status == 'approved' %}
+            <span class="icon">✅</span> <strong>Status:</strong> Request #{{ latest.id }} Approved! Please visit the Lab counter.
+        {% elif latest.status == 'collected' %}
+            <span class="icon">📦</span> <strong>Status:</strong> Items are with you. (Issued: {{ latest.collected_at|date:"d M, h:i A" }})
+        {% elif latest.status == 'returned' %}
+            <span class="icon">🏁</span> <strong>Status:</strong> Request #{{ latest.id }} fully returned & verified.
+        {% endif %}
+    </div>
+    {% endwith %}
+{% endif %}
+
+<div class="card-table-container">
+    <h3 style="padding: 20px 24px; margin: 0; font-size: 1.1rem; border-bottom: 1px solid var(--border);">My Activity</h3>
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Components & Return Progress</th>
+                    <th>Status</th>
+                    <th>Return Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for req in my_requests %}
+                <tr>
+                    <td style="font-weight: 600; color: var(--accent);">#{{ req.id }}</td>
+                    <td>
+                        {% for item in req.items.all %}
+                            <div class="item-progress-wrapper">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 6px;">
+                                    <span style="font-weight: 500; font-size: 0.9rem;">{{ item.component.name }}</span>
+                                    <span style="font-size: 0.75rem; color: #64748b;">
+                                        {{ item.returned_quantity }}/{{ item.issued_quantity }} returned
+                                    </span>
+                                </div>
+                                <div class="progress-track">
+                                    <div class="progress-bar" style="width: {% if item.issued_quantity > 0 %}{% widthratio item.returned_quantity item.issued_quantity 100 %}{% else %}0{% endif %}%"></div>
+                                </div>
                             </div>
-                        </div>
-                    {% endfor %}
-                </td>
-                <td style="padding: 12px;">
-                    <span class="status-{{ req.status }}" style="text-transform: capitalize; padding: 4px 8px; border-radius: 4px; font-size: 0.85em;">
-                        {{ req.get_status_display }}
-                    </span>
-                </td>
-                <td style="padding: 12px;">{{ req.return_date|default:"--" }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="4" style="text-align: center; padding: 20px;">You haven't made any requests yet.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ req.status }}">
+                            {{ req.get_status_display }}
+                        </span>
+                    </td>
+                    <td style="color: #64748b; font-size: 0.85rem;">
+                        {{ req.return_date|date:"d M Y"|default:"--" }}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 48px; color: #94a3b8;">
+                        <div style="font-size: 2rem; margin-bottom: 12px;">📂</div>
+                        No requests found. Start by making a new request.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <style>
-    .status-pending { background: #fff3cd; color: #856404; }
-    .status-approved { background: #d4edda; color: #155724; }
-    .status-collected { background: #d1ecf1; color: #0c5460; }
-    .status-rejected { background: #f8d7da; color: #721c24; }
+    /* Status Banner at the top */
+    .status-banner {
+        padding: 16px 20px;
+        border-radius: 10px;
+        margin-bottom: 32px;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        border: 1px solid transparent;
+    }
+    .status-banner.status-pending { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+    .status-banner.status-approved { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+    .status-banner.status-collected { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+    .status-banner.status-returned { background: #f5f3ff; border-color: #ddd6fe; color: #5b21b6; }
+    .status-banner .icon { margin-right: 12px; font-size: 1.2rem; }
+
+    /* Progress Bars */
+    .item-progress-wrapper { margin-bottom: 15px; }
+    .item-progress-wrapper:last-child { margin-bottom: 0; }
+    
+    .progress-track {
+        width: 100%;
+        background: #f1f5f9;
+        height: 6px;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .progress-bar {
+        background: var(--success);
+        height: 100%;
+        border-radius: 10px;
+        transition: width 0.4s ease;
+    }
+
+    /* Status Badges */
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+    .badge-pending { background: #fef3c7; color: #d97706; }
+    .badge-approved { background: #d1fae5; color: #059669; }
+    .badge-collected { background: #dbeafe; color: #2563eb; }
+    .badge-returned { background: #ede9fe; color: #7c3aed; }
+    .badge-rejected { background: #fee2e2; color: #dc2626; }
+
+    .card-table-container {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
 </style>
 {% endblock %}

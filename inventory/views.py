@@ -196,24 +196,30 @@ def update_request_status(request, pk):
         for index, item in enumerate(items):
             qty_returned_now = int(data_map.get(str(index), 0))
             if qty_returned_now > 0:
-                comp = item.component
-                comp.available_quantity += qty_returned_now
-                comp.save()
+                current_total_returned = (item.returned_quantity or 0) + qty_returned_now
+                
+                if current_total_returned <= item.issued_quantity:
+                    comp = item.component
+                    # Use min to ensure available never exceeds total_quantity
+                    comp.available_quantity = min(comp.available_quantity + qty_returned_now, comp.total_quantity)
+                    comp.save()
 
-                item.returned_quantity = (item.returned_quantity or 0) + qty_returned_now
-                item.save()
+                    item.returned_quantity = current_total_returned
+                    item.save()
 
-        # Check if EVERY item is now fully back
-        # We re-fetch to get updated values from the loop above
+        # --- NEW LOGIC: Check if everything is back ---
         updated_items = RequestItem.objects.filter(request=item_request)
-        all_returned = all((i.returned_quantity or 0) >= (i.issued_quantity or 0) for i in updated_items)
+        # Check if all items that were issued are now fully returned
+        all_returned = all(
+            (i.returned_quantity or 0) >= (i.issued_quantity or 0) 
+            for i in updated_items if (i.issued_quantity or 0) > 0
+        )
 
         if all_returned:
             item_request.status = 'returned'
-            # Force log the return time if it hasn't been logged yet
-            if not item_request.return_date:
-                item_request.return_date = timezone.now()
+            item_request.return_date = timezone.now()
         else:
+            # Keep it as collected so it stays in the "Active" list in Flutter
             item_request.status = 'collected'
             
         item_request.save()

@@ -1,43 +1,120 @@
 {% extends 'inventory/base.html' %}
 
 {% block content %}
-<div style="max-width: 400px; margin: 0 auto; padding: 20px;">
-    <h2 style="text-align: center; color: #2c3e50;">IdeaLab Login</h2>
-    <p style="text-align: center; color: #7f8c8d;">Enter your credentials to access the inventory.</p>
-    <p style="text-align: center; margin-top: 15px;">
-    Don't have an account? <a href="{% url 'signup' %}">Sign up here</a>
-</p>
-    <form method="post" style="background: #fff; padding: 25px; border-radius: 8px; border: 1px solid #ddd;">
-        {% csrf_token %}
-        
-        <div style="margin-bottom: 15px;">
-            <label style="display: block; margin-bottom: 5px;">Username</label>
-            {{ form.username }}
-        </div>
+<div class="login-wrapper">
+    <div class="login-header">
+        <h2 style="margin: 0; font-size: 1.85rem; letter-spacing: -0.025em; color: var(--primary);">IdeaLab Login</h2>
+        <p style="margin: 8px 0 0 0; color: #64748b; font-size: 0.95rem;">Enter your credentials to manage your requests.</p>
+    </div>
 
-        <div style="margin-bottom: 20px;">
-            <label style="display: block; margin-bottom: 5px;">Password</label>
-            {{ form.password }}
-        </div>
+    <div class="login-card">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-field">
+                <label>Username</label>
+                {{ form.username }}
+            </div>
 
-        <button type="submit" class="btn" style="width: 100%;">Login</button>
-    </form>
-    
-    {% if form.errors %}
-        <p style="color: #e74c3c; text-align: center; margin-top: 15px;">
-            Invalid username or password. Please try again.
-        </p>
-    {% endif %}
+            <div class="form-field">
+                <label>Password</label>
+                {{ form.password }}
+            </div>
+
+            <button type="submit" class="btn btn-full">Login to Dashboard</button>
+        </form>
+
+        {% if form.errors %}
+            <div class="error-msg">
+                <span style="margin-right: 8px;">⚠️</span> Invalid credentials. Please try again.
+            </div>
+        {% endif %}
+    </div>
+
+    <p style="text-align: center; margin-top: 24px; color: #64748b; font-size: 0.95rem;">
+        Don't have an account? <a href="{% url 'signup' %}" style="color: var(--accent); font-weight: 600; text-decoration: none;">Sign up here</a>
+    </p>
 </div>
 
 <style>
-    /* Styling the Django form fields */
-    input[type="text"], input[type="password"] {
+    .login-wrapper {
+        max-width: 420px;
+        margin: 60px auto;
+    }
+
+    .login-header {
+        text-align: center;
+        margin-bottom: 32px;
+    }
+
+    .login-card {
+        background: white;
+        padding: 32px;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+    }
+
+    .form-field {
+        margin-bottom: 20px;
+    }
+
+    .form-field label {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #64748b;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    /* Target Django's auto-generated inputs */
+    input[type="text"], 
+    input[type="password"],
+    input[type="email"] {
         width: 100%;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        box-sizing: border-box; /* Ensures padding doesn't affect width */
+        padding: 12px 16px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-family: inherit;
+        font-size: 1rem;
+        transition: all 0.2s;
+        box-sizing: border-box;
+        background: #fdfdfd;
+    }
+
+    input:focus {
+        outline: none;
+        border-color: var(--accent);
+        background: white;
+        box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
+    }
+
+    .btn-full {
+        width: 100%;
+        justify-content: center;
+        padding: 14px;
+        font-size: 1rem;
+        margin-top: 10px;
+    }
+
+    .error-msg {
+        margin-top: 20px;
+        padding: 12px;
+        background: #fff1f2;
+        border: 1px solid #fecaca;
+        color: var(--danger);
+        border-radius: 8px;
+        font-size: 0.85rem;
+        text-align: center;
+        font-weight: 500;
+    }
+
+    /* Mobile adjustments */
+    @media (max-width: 480px) {
+        .login-wrapper { margin: 30px 20px; }
+        .login-card { padding: 24px; }
     }
 </style>
 {% endblock %}

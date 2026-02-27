@@ -1,53 +1,179 @@
 {% extends 'inventory/base.html' %}
 
 {% block content %}
-    <h2>New Lab Request</h2>
-    <p>Search for components and specify quantities.</p>
-    <hr>
-    
-    <form method="post">
-        {% csrf_token %}
-        <div id="request-items-container">
-            <div class="request-row" style="display: flex; gap: 10px; margin-bottom: 15px; align-items: flex-end;">
-                <div style="flex: 2;">
-                    <label>Search Component</label><br>
-                    <input list="component-list" name="component_name[]" placeholder="Type to search..." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
-                </div>
-                
-                <div style="flex: 1;">
-                    <label>Quantity</label><br>
-                    <input type="number" name="quantity[]" min="1" value="1" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
-                </div>
+<div style="margin-bottom: 30px;">
+    <h2 style="margin: 0; font-size: 1.75rem; letter-spacing: -0.025em;">New Lab Request</h2>
+    <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.95rem;">Search for components and specify the quantity needed for your project.</p>
+</div>
+
+<form method="post" id="request-form">
+    {% csrf_token %}
+    <div id="request-items-container">
+        <div class="request-row">
+            <div class="input-group search-group">
+                <label>Search Component</label>
+                <input list="component-list" name="component_name[]" placeholder="Type component name (e.g. Arduino)..." required>
             </div>
-        </div>
+            
+            <div class="input-group qty-group">
+                <label>Quantity</label>
+                <input type="number" name="quantity[]" min="1" value="1" required>
+            </div>
 
-        <button type="button" onclick="addRow()" style="background: #95a5a6; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 0.9em;">
-            + Add Another Item
+            <button type="button" class="btn-remove" onclick="removeRow(this)" title="Remove item">
+                &times;
+            </button>
+        </div>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <button type="button" onclick="addRow()" class="btn-secondary">
+            <span style="margin-right: 6px;">+</span> Add Another Item
         </button>
+    </div>
 
- <datalist id="component-list">
-    {% for comp in components %}
-        <option value="{{ comp.name }}">{{ comp.name }} | Stock: {{ comp.available_quantity }}</option>
-    {% endfor %}
-</datalist>
+    <datalist id="component-list">
+        {% for comp in components %}
+            <option value="{{ comp.name }}">Available: {{ comp.available_quantity }} | {{ comp.name }}</option>
+        {% endfor %}
+    </datalist>
 
-        <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
-            <button type="submit" class="btn">Submit Request</button>
-            <a href="{% url 'dashboard' %}" style="margin-left: 15px; color: #666;">Cancel</a>
-        </div>
-    </form>
+    <div class="form-footer">
+        <button type="submit" class="btn">Submit Request</button>
+        <a href="{% url 'dashboard' %}" class="btn-cancel">Cancel</a>
+    </div>
+</form>
 
-    <script>
-    function addRow() {
-        const container = document.getElementById('request-items-container');
-        const firstRow = container.querySelector('.request-row');
-        const newRow = firstRow.cloneNode(true);
-        
-        // Clear the values in the new row
-        newRow.querySelector('input[name="component_name[]"]').value = "";
-        newRow.querySelector('input[name="quantity[]"]').value = "1";
-        
-        container.appendChild(newRow);
+<style>
+    .request-row {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        align-items: flex-end;
+        padding: 20px;
+        background: #f8fafc;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        position: relative;
+        transition: all 0.2s;
     }
-    </script>
+
+    .request-row:hover {
+        border-color: var(--accent);
+        background: #fff;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
+
+    .input-group label {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #64748b;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+
+    .input-group input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 0.95rem;
+        transition: border-color 0.2s;
+    }
+
+    .input-group input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+    }
+
+    .search-group { flex: 3; }
+    .qty-group { flex: 1; }
+
+    .btn-secondary {
+        background: white;
+        color: var(--text);
+        border: 1px solid var(--border);
+        padding: 10px 18px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+    }
+
+    .btn-remove {
+        background: #fee2e2;
+        color: #ef4444;
+        border: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        margin-bottom: 4px;
+    }
+
+    .btn-remove:hover {
+        background: #fecaca;
+        color: #dc2626;
+    }
+
+    .form-footer {
+        margin-top: 40px;
+        padding-top: 25px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+    }
+
+    .btn-cancel {
+        margin-left: 20px;
+        color: #64748b;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+
+    .btn-cancel:hover {
+        color: var(--danger);
+    }
+</style>
+
+<script>
+function addRow() {
+    const container = document.getElementById('request-items-container');
+    const rows = container.querySelectorAll('.request-row');
+    const newRow = rows[0].cloneNode(true);
+    
+    // Reset values
+    newRow.querySelector('input[name="component_name[]"]').value = "";
+    newRow.querySelector('input[name="quantity[]"]').value = "1";
+    
+    // Ensure remove button is visible (if you had logic to hide it on row 1)
+    newRow.querySelector('.btn-remove').style.visibility = "visible";
+    
+    container.appendChild(newRow);
+}
+
+function removeRow(btn) {
+    const container = document.getElementById('request-items-container');
+    if (container.querySelectorAll('.request-row').length > 1) {
+        btn.closest('.request-row').remove();
+    } else {
+        alert("You must request at least one item.");
+    }
+}
+</script>
 {% endblock %}

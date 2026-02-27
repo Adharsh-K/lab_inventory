@@ -3,42 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IdeaLab Inventory</title>
+    <title>MEC IdeaLab | Inventory</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #2c3e50;
-            --accent: #3498db;
-            --success: #27ae60;
-            --danger: #e74c3c;
-            --light: #f4f7f6;
+            --primary: #0f172a;      /* Deep Navy */
+            --accent: #0ea5e9;       /* Bright Blue */
+            --success: #10b981;      /* Emerald */
+            --danger: #ef4444;       /* Rose */
+            --bg: #f8fafc;           /* Soft Slate */
+            --text: #1e293b;         /* Dark Slate */
+            --border: #e2e8f0;
         }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--light); margin: 0; }
-        nav { background: var(--primary); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        nav a { color: white; text-decoration: none; font-weight: bold; }
-        .container { max-width: 900px; margin: 30px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .btn { background: var(--accent); color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; }
-        .btn-success { background: var(--success); }
-        .btn:hover { opacity: 0.9; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th { text-align: left; background: #eee; padding: 12px; }
-        td { padding: 12px; border-bottom: 1px solid #ddd; }
+
+        * { box-sizing: border-box; }
+
+        body { 
+            font-family: 'Inter', system-ui, sans-serif; 
+            background: var(--bg); 
+            color: var(--text);
+            margin: 0; 
+            line-height: 1.5;
+        }
+
+        nav { 
+            background: var(--primary); 
+            padding: 0.75rem 2rem; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        nav .logo { 
+            font-size: 1.25rem;
+            color: white; 
+            text-decoration: none; 
+            font-weight: 700; 
+            letter-spacing: -0.025em;
+            display: flex;
+            align-items: center;
+        }
+
+        nav .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .user-tag {
+            background: rgba(255,255,255,0.1);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #cbd5e1;
+        }
+
+        .container { 
+            max-width: 1000px; 
+            margin: 40px auto; 
+            background: white; 
+            padding: 40px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); 
+            border: 1px solid var(--border);
+        }
+
+        /* Standardized Button Styles */
+        .btn { 
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 0.9rem;
+            background: var(--accent); 
+            color: white; 
+            padding: 10px 24px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            text-decoration: none; 
+            display: inline-flex;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .btn:hover { 
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+            filter: brightness(1.1);
+        }
+
+        .btn-logout {
+            background: transparent;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 6px 12px;
+            transition: color 0.2s;
+        }
+
+        .btn-logout:hover {
+            color: var(--danger);
+        }
+
+        /* Modern Table Styling */
+        table { 
+            width: 100%; 
+            border-collapse: separate; 
+            border-spacing: 0;
+            margin-top: 24px; 
+        }
+
+        th { 
+            text-align: left; 
+            background: #f1f5f9; 
+            color: #64748b;
+            padding: 14px 16px; 
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 2px solid var(--border);
+        }
+
+        td { 
+            padding: 16px; 
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
+        }
+
+        tr:last-child td { border-bottom: none; }
+        
+        tr:hover td { background-color: #fcfdfe; }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .container { margin: 15px; padding: 20px; }
+            nav { padding: 1rem; }
+            .user-tag { display: none; }
+        }
     </style>
 </head>
 <body>
 
 <nav>
-    <a href="{% url 'dashboard' %}">MEC IdeaLab | Inventory</a>
-    <div>
+    <a href="{% url 'dashboard' %}" class="logo">
+        <span style="color: var(--accent); margin-right: 4px;">MEC</span> IdeaLab
+    </a>
+    <div class="nav-right">
         {% if user.is_authenticated %}
-            <span style="margin-right: 15px;">Welcome, {{ user.username }}</span>
+            <span class="user-tag">{{ user.first_name }}</span>
             <form action="{% url 'logout' %}" method="post" style="display: inline;">
-    {% csrf_token %}
-    <button type="submit" style="background: none; border: none; color: #ff7675; cursor: pointer; font-weight: bold; font-family: inherit; font-size: inherit;">
-        Logout
-    </button>
-</form>
+                {% csrf_token %}
+                <button type="submit" class="btn-logout">
+                    Logout
+                </button>
+            </form>
         {% else %}
-            <a href="{% url 'login' %}">Login</a>
+            <a href="{% url 'login' %}" class="btn">Login</a>
         {% endif %}
     </div>
 </nav>
